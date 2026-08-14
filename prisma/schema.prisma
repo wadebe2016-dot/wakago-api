@@ -1,0 +1,354 @@
+// =====================================================================
+// Wakago — Schéma de base de données (PostgreSQL)
+// Multi-tenant par agencyId. Anti-double-vente : contrainte unique
+// partielle sur Booking(tripId, seatNumber) pour les statuts actifs
+// (voir migration SQL) + verrou Redis de 10 min pendant le paiement.
+// =====================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ----------------------------- TENANTS -------------------------------
+
+enum AgencyStatus {
+  PENDING   // souscription en cours de validation
+  ACTIVE
+  SUSPENDED
+}
+
+enum PayoutFrequency {
+  DAILY
+  WEEKLY
+}
+
+model Agency {
+  id              String          @id @default(cuid())
+  name            String
+  slug            String          @unique
+  status          AgencyStatus    @default(PENDING)
+  phone           String
+  email           String?
+  // Commission plateforme en pourcentage (ex. 5.00 = 5 %)
+  commissionRate  Decimal         @default(5.00) @db.Decimal(5, 2)
+  payoutFrequency PayoutFrequency @default(WEEKLY)
+  // Compte de reversement (MoMo marchand ou banque)
+  payoutMethod    String?
+  payoutAccount   String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  users          AgencyUser[]
+  boardingPoints BoardingPoint[]
+  routes         Route[]
+  buses          Bus[]
+  seatMaps       SeatMap[]
+  trips          Trip[]
+  bookings       Booking[]
+  payouts        Payout[]
+}
+
+enum AgencyRole {
+  OWNER      // gestionnaire principal
+  MANAGER    // paramétrage lignes/horaires/tarifs
+  CASHIER    // vente au guichet
+  CONTROLLER // contrôle d'embarquement
+}
+
+model AgencyUser {
+  id           String     @id @default(cuid())
+  agencyId     String
+  agency       Agency     @relation(fields: [agencyId], references: [id])
+  role         AgencyRole
+  fullName     String
+  phone        String
+  passwordHash String
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+
+  boardedTickets Ticket[] @relation("ControllerTickets")
+  counterSales   Booking[] @relation("CashierBookings")
+
+  @@unique([agencyId, phone])
+  @@index([agencyId])
+}
+
+// ---------------------------- VOYAGEURS ------------------------------
+
+model Traveler {
+  id        String    @id @default(cuid())
+  phone     String    @unique // authentification par OTP SMS
+  fullName  String?
+  createdAt DateTime  @default(now())
+  bookings  Booking[]
+}
+
+// ------------------------ RÉFÉRENTIEL RÉSEAU -------------------------
+
+model City {
+  id     String  @id @default(cuid())
+  name   String
+  region String?
+
+  boardingPoints    BoardingPoint[]
+  routesAsOrigin      Route[] @relation("RouteOrigin")
+  routesAsDestination Route[] @relation("RouteDestination")
+
+  @@unique([name, region])
+}
+
+model BoardingPoint {
+  id       String @id @default(cuid())
+  agencyId String
+  agency   Agency @relation(fields: [agencyId], references: [id])
+  cityId   String
+  city     City   @relation(fields: [cityId], references: [id])
+  name     String // ex. "Agence Akwa", "Gare routière Mvan"
+  address  String?
+
+  trips Trip[]
+
+  @@index([agencyId])
+}
+
+model Route {
+  id                String @id @default(cuid())
+  agencyId          String
+  agency            Agency @relation(fields: [agencyId], references: [id])
+  originCityId      String
+  originCity        City   @relation("RouteOrigin", fields: [originCityId], references: [id])
+  destinationCityId String
+  destinationCity   City   @relation("RouteDestination", fields: [destinationCityId], references: [id])
+  isActive          Boolean @default(true)
+
+  schedules Schedule[]
+  trips     Trip[]
+
+  @@unique([agencyId, originCityId, destinationCityId])
+  @@index([originCityId, destinationCityId])
+}
+
+// Grille horaire récurrente : génère les Trips (départs concrets)
+model Schedule {
+  id            String  @id @default(cuid())
+  routeId       String
+  route         Route   @relation(fields: [routeId], references: [id])
+  departureTime String  // "HH:mm"
+  daysOfWeek    Int[]   // 1=lundi ... 7=dimanche
+  priceFcfa     Int     // tarif en FCFA (entier, pas de centimes)
+  isActive      Boolean @default(true)
+
+  trips Trip[]
+}
+
+// ------------------------------ FLOTTE -------------------------------
+
+model SeatMap {
+  id       String @id @default(cuid())
+  agencyId String
+  agency   Agency @relation(fields: [agencyId], references: [id])
+  name     String // ex. "Coaster 30 places", "VIP 55"
+  capacity Int
+  // Disposition JSON : [{ row: 1, seats: ["1A","1B",null,"1C"] }, ...]
+  layout   Json
+
+  buses Bus[]
+
+  @@index([agencyId])
+}
+
+model Bus {
+  id          String  @id @default(cuid())
+  agencyId    String
+  agency      Agency  @relation(fields: [agencyId], references: [id])
+  plateNumber String
+  seatMapId   String
+  seatMap     SeatMap @relation(fields: [seatMapId], references: [id])
+  isActive    Boolean @default(true)
+
+  trips Trip[]
+
+  @@unique([agencyId, plateNumber])
+}
+
+// ------------------------------ DÉPARTS ------------------------------
+
+enum TripStatus {
+  SCHEDULED
+  BOARDING
+  DEPARTED
+  ARRIVED
+  CANCELLED
+}
+
+model Trip {
+  id              String        @id @default(cuid())
+  agencyId        String
+  agency          Agency        @relation(fields: [agencyId], references: [id])
+  routeId         String
+  route           Route         @relation(fields: [routeId], references: [id])
+  scheduleId      String?
+  schedule        Schedule?     @relation(fields: [scheduleId], references: [id])
+  boardingPointId String
+  boardingPoint   BoardingPoint @relation(fields: [boardingPointId], references: [id])
+  busId           String?
+  bus             Bus?          @relation(fields: [busId], references: [id])
+  departureAt     DateTime      // date + heure du départ
+  priceFcfa       Int
+  status          TripStatus    @default(SCHEDULED)
+  createdAt       DateTime      @default(now())
+
+  bookings Booking[]
+
+  @@index([routeId, departureAt])
+  @@index([agencyId, departureAt])
+}
+
+// ---------------------------- RÉSERVATIONS ---------------------------
+
+enum BookingChannel {
+  APP     // application voyageur
+  COUNTER // guichet
+}
+
+enum BookingStatus {
+  PENDING_PAYMENT // siège bloqué, paiement en cours (TTL 10 min)
+  CONFIRMED
+  EXPIRED         // paiement non confirmé dans le délai
+  CANCELLED       // annulé par le voyageur ou l'agence
+  REFUNDED
+}
+
+model Booking {
+  id                String         @id @default(cuid())
+  agencyId          String
+  agency            Agency         @relation(fields: [agencyId], references: [id])
+  tripId            String
+  trip              Trip           @relation(fields: [tripId], references: [id])
+  seatNumber        String         // ex. "12B"
+  travelerId        String?
+  traveler          Traveler?      @relation(fields: [travelerId], references: [id])
+  cashierId         String?        // renseigné si vente guichet
+  cashier           AgencyUser?    @relation("CashierBookings", fields: [cashierId], references: [id])
+  channel           BookingChannel
+  status            BookingStatus  @default(PENDING_PAYMENT)
+  passengerName     String
+  passengerIdNumber String?        // n° CNI si exigé par la compagnie
+  passengerPhone    String
+  amountFcfa        Int            // prix payé
+  commissionFcfa    Int            @default(0) // commission plateforme retenue
+  expiresAt         DateTime?      // échéance du blocage de siège
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  ticket     Ticket?
+  payments   Payment[]
+  payoutLine PayoutLine?
+
+  // NB : l'unicité "un seul booking ACTIF par (tripId, seatNumber)"
+  // est une contrainte unique PARTIELLE créée en SQL brut dans la
+  // migration (Prisma ne modélise pas les index partiels) :
+  //   CREATE UNIQUE INDEX booking_active_seat_uq
+  //   ON "Booking"("tripId","seatNumber")
+  //   WHERE status IN ('PENDING_PAYMENT','CONFIRMED');
+  @@index([tripId, status])
+  @@index([travelerId])
+  @@index([agencyId, createdAt])
+}
+
+// ------------------------------ BILLETS ------------------------------
+
+enum TicketStatus {
+  VALID
+  BOARDED
+  CANCELLED
+}
+
+model Ticket {
+  id           String       @id @default(cuid())
+  bookingId    String       @unique
+  booking      Booking      @relation(fields: [bookingId], references: [id])
+  qrToken      String       @unique // jeton signé encodé dans le QR
+  status       TicketStatus @default(VALID)
+  boardedAt    DateTime?
+  controllerId String?
+  controller   AgencyUser?  @relation("ControllerTickets", fields: [controllerId], references: [id])
+  issuedAt     DateTime     @default(now())
+}
+
+// ----------------------------- PAIEMENTS -----------------------------
+
+enum PaymentProvider {
+  MTN_MOMO
+  ORANGE_MONEY
+  CASH // guichet
+}
+
+enum PaymentStatus {
+  INITIATED
+  PENDING     // push envoyé, en attente de confirmation opérateur
+  SUCCESS
+  FAILED
+  TIMEOUT     // à réconcilier via vérification de statut
+  REFUNDED
+}
+
+model Payment {
+  id            String          @id @default(cuid())
+  bookingId     String
+  booking       Booking         @relation(fields: [bookingId], references: [id])
+  provider      PaymentProvider
+  status        PaymentStatus   @default(INITIATED)
+  amountFcfa    Int
+  payerPhone    String?
+  aggregatorRef String?         @unique // référence de l'agrégateur
+  failureReason String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([bookingId])
+  @@index([status, createdAt]) // file de réconciliation
+}
+
+// ---------------------------- REVERSEMENTS ---------------------------
+
+enum PayoutStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+model Payout {
+  id             String       @id @default(cuid())
+  agencyId       String
+  agency         Agency       @relation(fields: [agencyId], references: [id])
+  periodStart    DateTime
+  periodEnd      DateTime
+  grossFcfa      Int          // total billets encaissés en ligne
+  commissionFcfa Int          // commission plateforme retenue
+  netFcfa        Int          // reversé à l'agence
+  status         PayoutStatus @default(PENDING)
+  reference      String?      // référence du virement / transfert MoMo
+  paidAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  lines PayoutLine[]
+
+  @@index([agencyId, periodStart])
+}
+
+model PayoutLine {
+  id        String  @id @default(cuid())
+  payoutId  String
+  payout    Payout  @relation(fields: [payoutId], references: [id])
+  bookingId String  @unique
+  booking   Booking @relation(fields: [bookingId], references: [id])
+  grossFcfa Int
+  commissionFcfa Int
+  netFcfa   Int
+}
