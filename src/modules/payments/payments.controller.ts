@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Param, Post, Req } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import { Public } from '../auth/jwt-auth.guard';
@@ -26,6 +26,7 @@ export class PaymentsController {
   /** Webhook de l'agrégateur (signature vérifiée) — public par nature. */
   @Public()
   @Post('webhook')
+  @HttpCode(200)
   webhook(
     @Req() req: any,
     @Headers('x-signature') signature: string,
