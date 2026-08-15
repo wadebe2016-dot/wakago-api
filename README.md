@@ -75,3 +75,21 @@ webhook paiement, et les routes d'authentification.
   699000002 (CASHIER), 699000003 (CONTROLLER) — mot de passe `Wakago2026!`.
   Le seed réinitialise ce mot de passe à chaque exécution (dev uniquement).
 - IMPORTANT production : définir un JWT_SECRET fort dans .env.
+
+## Module Boarding (v0.4)
+Réservé aux comptes agence CONTROLLER / MANAGER / OWNER, sur les départs de
+leur propre agence uniquement.
+- `GET  /boarding/trips/:tripId/manifest` — liste des passagers confirmés,
+  statut d'embarquement, et qrTokens (base du mode hors ligne).
+- `POST /boarding/trips/:tripId/scan` {qrToken} — scan en ligne. Réponses :
+  BOARDED / ALREADY_BOARDED (doublon détecté) / REJECTED (raison explicite).
+  Le premier scan passe le départ en BOARDING.
+- `POST /boarding/trips/:tripId/sync` {scans:[{qrToken, scannedAt}]} — rejoue
+  les scans faits hors ligne (max 200), conserve l'heure réelle du scan.
+- `POST /boarding/trips/:tripId/close` — départ → DEPARTED, avec récapitulatif.
+
+Mode hors ligne (côté app contrôleur, à implémenter) : télécharger le
+manifeste avant le départ ; à chaque scan, vérifier la signature HMAC du
+QR (`verifyQrSignature`, même algorithme que le serveur) et la présence du
+qrToken dans le manifeste ; marquer localement ; puis /sync à la reconnexion.
+Le contrôleur voit donc les billets forgés et les doublons même sans réseau.
