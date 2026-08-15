@@ -20,15 +20,11 @@ npx prisma migrate dev      # créer le schéma
 npm run start:dev
 ```
 
-## IMPORTANT — contrainte anti-double-vente
-Après la première migration, ajouter dans une migration SQL :
-```sql
-CREATE UNIQUE INDEX booking_active_seat_uq
-  ON "Booking"("tripId","seatNumber")
-  WHERE status IN ('PENDING_PAYMENT','CONFIRMED');
-```
-(Prisma ne modélise pas les index partiels ; cette contrainte est le
-filet de sécurité ultime contre la double vente.)
+## Contrainte anti-double-vente
+Portée par la migration `20260815090000_booking_active_seat_unique`
+(index unique partiel sur Booking, non modélisable dans schema.prisma).
+Elle s'applique automatiquement avec `npx prisma migrate deploy` (prod)
+ou `npx prisma migrate dev` (dev). Idempotente (IF NOT EXISTS).
 
 ## Endpoints disponibles
 - `GET  /api/v1/trips/search?from=&to=&date=YYYY-MM-DD`
