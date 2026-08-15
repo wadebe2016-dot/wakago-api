@@ -90,7 +90,7 @@ export class BookingsService {
             seatNumber: dto.seatNumber,
             travelerId: user?.type === 'traveler' ? user.sub : null,
             cashierId: user?.type === 'agency' ? user.sub : null,
-            channel: dto.channel,
+            channel: dto.channel ?? 'APP',
             status: 'PENDING_PAYMENT',
             passengerName: dto.passengerName,
             passengerIdNumber: dto.passengerIdNumber ?? null,
