@@ -31,6 +31,11 @@ ou `npx prisma migrate dev` (dev). Idempotente (IF NOT EXISTS).
 - `GET  /api/v1/trips/:tripId/seats`
 - `POST /api/v1/bookings/hold`
 
+## Modèle économique (v0.5)
+Abonnement PRÉPAYÉ par agence, zéro commission sur les billets : les billets
+sont encaissés sur le compte Campay DE L'AGENCE (champs campayAppUsername /
+campayAppPassword sur Agency) ; les abonnements sur le compte Atlastech.
+
 ## Module Payments (v0.2)
 Chaîne complète : `POST /bookings/hold` → `POST /payments/initiate`
 → push Mobile Money → webhook `POST /payments/webhook` (ou réconciliation)
@@ -93,3 +98,23 @@ manifeste avant le départ ; à chaque scan, vérifier la signature HMAC du
 QR (`verifyQrSignature`, même algorithme que le serveur) et la présence du
 qrToken dans le manifeste ; marquer localement ; puis /sync à la reconnexion.
 Le contrôleur voit donc les billets forgés et les doublons même sans réseau.
+
+## Module Subscriptions (v0.5)
+- `GET  /subscriptions/plans` (public) — grille des plans (paliers maxBuses/maxRoutes, essai).
+- `GET  /subscriptions/me` — statut de l'abonnement de l'agence + BANDEAU à afficher
+  dans le back-office (mise en demeure, suspension, rappel).
+- `POST /subscriptions` {planCode} — souscrire/renouveler. Première souscription
+  avec essai : TRIAL immédiat ; sinon PENDING jusqu'au paiement (servi APRÈS paiement).
+- `POST /subscriptions/pay` {subscriptionId, provider, payerPhone} — paiement MoMo/OM
+  (sandbox pour l'instant ; Campay compte Atlastech ensuite).
+- `POST /subscriptions/reconcile` — confirme les paiements en attente (cron).
+- `POST /subscriptions/lifecycle/run` — cycle quotidien (cron) : rappels J-7 / J-2,
+  MISE EN DEMEURE J+0 (→ GRACE, SMS + email + bandeau, tracée en base),
+  seconde relance J+4, SUSPENSION J+7 (agence invisible des voyageurs, billets
+  déjà vendus toujours valides), réactivation immédiate au paiement.
+- `POST /subscriptions/:id/extension` {extraDays} — sursis manuel (plateforme).
+- Paramètres via .env : SUB_GRACE_DAYS, SUB_REMINDER1_DAYS, SUB_REMINDER2_DAYS,
+  SUB_SECOND_NOTICE_DAY. Notifications SMS/email : stub loggé (à brancher).
+- Migration `20260815100000_subscriptions`. Déploiement : `npx prisma migrate deploy
+  && npx prisma generate` AVANT `npm run build`.
+- Crons à installer (pm2/cron) : reconcile toutes les 2 min, lifecycle 1×/jour.

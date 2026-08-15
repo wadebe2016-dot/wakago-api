@@ -58,6 +58,30 @@ async function main() {
   await agencyUser('699000003', 'Contrôleur Démo', 'CONTROLLER');
   console.log(`Comptes agence (slug: ${agency.slug}) : 699000001 OWNER, 699000002 CASHIER, 699000003 CONTROLLER — mot de passe : ${DEMO_PASSWORD}`);
 
+  // 1c. Plans d'abonnement (grille de départ — à valider commercialement)
+  const plans = [
+    { code: 'STARTER_M', name: 'Starter mensuel',   period: 'MONTHLY',   priceFcfa: 15000,  maxBuses: 3,   maxRoutes: 3,   trialDays: 30, sortOrder: 1 },
+    { code: 'PRO_M',     name: 'Pro mensuel',       period: 'MONTHLY',   priceFcfa: 35000,  maxBuses: 10,  maxRoutes: 10,  trialDays: 30, sortOrder: 2 },
+    { code: 'PRO_Q',     name: 'Pro trimestriel',   period: 'QUARTERLY', priceFcfa: 95000,  maxBuses: 10,  maxRoutes: 10,  trialDays: 30, sortOrder: 3 },
+    { code: 'ENTREPRISE_Y', name: 'Entreprise annuel', period: 'YEARLY', priceFcfa: 600000, maxBuses: null, maxRoutes: null, trialDays: 30, sortOrder: 4 },
+  ];
+  for (const pl of plans) {
+    await prisma.subscriptionPlan.upsert({ where: { code: pl.code }, update: pl, create: pl });
+  }
+  console.log('Plans :', plans.map((p) => p.code).join(', '));
+
+  // 1d. Abonnement d'essai pour l'agence démo (si aucun abonnement)
+  const existingSub = await prisma.subscription.findFirst({ where: { agencyId: agency.id } });
+  if (!existingSub) {
+    const starter = await prisma.subscriptionPlan.findUnique({ where: { code: 'STARTER_M' } });
+    const now = new Date();
+    const endsAt = new Date(now.getTime() + starter.trialDays * 86400000);
+    await prisma.subscription.create({
+      data: { agencyId: agency.id, planId: starter.id, status: 'TRIAL', startsAt: now, endsAt, graceEndsAt: new Date(endsAt.getTime() + 7 * 86400000) },
+    });
+    console.log(`Abonnement démo : essai STARTER_M jusqu'au ${endsAt.toISOString().slice(0, 10)}`);
+  }
+
   // 2. Villes
   const cityData = [
     { name: 'Douala', region: 'Littoral' },

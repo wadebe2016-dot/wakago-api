@@ -34,14 +34,17 @@ model Agency {
   status          AgencyStatus    @default(PENDING)
   phone           String
   email           String?
-  // Commission plateforme en pourcentage (ex. 5.00 = 5 %)
-  commissionRate  Decimal         @default(5.00) @db.Decimal(5, 2)
-  payoutFrequency PayoutFrequency @default(WEEKLY)
-  // Compte de reversement (MoMo marchand ou banque)
-  payoutMethod    String?
-  payoutAccount   String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  // Compte Campay DE L'AGENCE : les billets y sont encaissés directement.
+  // Les secrets seront chiffrés au repos (itération sécurité) — jamais renvoyés par l'API.
+  campayAppUsername String?
+  campayAppPassword String?
+  // Conservés pour compatibilité (non utilisés dans le modèle abonnement)
+  commissionRate    Decimal         @default(0) @db.Decimal(5, 2)
+  payoutFrequency   PayoutFrequency @default(WEEKLY)
+  payoutMethod      String?
+  payoutAccount     String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
   users          AgencyUser[]
   boardingPoints BoardingPoint[]
@@ -51,6 +54,8 @@ model Agency {
   trips          Trip[]
   bookings       Booking[]
   payouts        Payout[]
+  subscriptions  Subscription[]
+  notices        SubscriptionNotice[]
 }
 
 enum AgencyRole {
@@ -351,4 +356,108 @@ model PayoutLine {
   grossFcfa Int
   commissionFcfa Int
   netFcfa   Int
+}
+
+
+// ----------------------------- ABONNEMENTS ---------------------------
+// Modèle économique : abonnement PRÉPAYÉ par agence (payé avant service),
+// zéro commission sur les billets. Cycle : rappels J-7/J-2 → mise en demeure
+// J+0 → seconde relance J+4 → suspension J+7 → réactivation immédiate au paiement.
+
+enum PlanPeriod {
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+model SubscriptionPlan {
+  id          String     @id @default(cuid())
+  code        String     @unique  // ex. "STARTER_M", "PRO_Y"
+  name        String               // ex. "Starter mensuel"
+  period      PlanPeriod
+  priceFcfa   Int
+  // Palier : capacité incluse (null = illimité)
+  maxBuses    Int?
+  maxRoutes   Int?
+  trialDays   Int        @default(0)  // essai gratuit à la première souscription
+  isActive    Boolean    @default(true)
+  sortOrder   Int        @default(0)
+
+  subscriptions Subscription[]
+}
+
+enum SubscriptionStatus {
+  TRIAL        // période d'essai en cours
+  PENDING      // souscrite, paiement non encore confirmé (jamais servie)
+  ACTIVE       // payée, en cours
+  GRACE        // échue et impayée : mise en demeure envoyée, service maintenu
+  SUSPENDED    // délai de grâce écoulé sans paiement
+  CANCELLED
+}
+
+model Subscription {
+  id           String             @id @default(cuid())
+  agencyId     String
+  agency       Agency             @relation(fields: [agencyId], references: [id])
+  planId       String
+  plan         SubscriptionPlan   @relation(fields: [planId], references: [id])
+  status       SubscriptionStatus @default(PENDING)
+  startsAt     DateTime?          // début de la période payée
+  endsAt       DateTime?          // échéance
+  graceEndsAt  DateTime?          // fin du délai de grâce (endsAt + 7 j)
+  suspendedAt  DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  payments SubscriptionPayment[]
+  notices  SubscriptionNotice[]
+
+  @@index([agencyId, status])
+  @@index([status, endsAt])
+  @@index([status, graceEndsAt])
+}
+
+model SubscriptionPayment {
+  id             String          @id @default(cuid())
+  subscriptionId String
+  subscription   Subscription    @relation(fields: [subscriptionId], references: [id])
+  provider       PaymentProvider
+  status         PaymentStatus   @default(INITIATED)
+  amountFcfa     Int
+  payerPhone     String?
+  aggregatorRef  String?         @unique
+  failureReason  String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([subscriptionId])
+  @@index([status, createdAt])
+}
+
+enum NoticeKind {
+  REMINDER_7D      // J-7
+  REMINDER_2D      // J-2
+  FORMAL_NOTICE    // mise en demeure J+0
+  SECOND_NOTICE    // seconde relance J+4
+  SUSPENSION       // notification de suspension J+7
+  REACTIVATION
+}
+
+// Preuve horodatée de chaque notification (mise en demeure notamment)
+model SubscriptionNotice {
+  id             String       @id @default(cuid())
+  agencyId       String
+  agency         Agency       @relation(fields: [agencyId], references: [id])
+  subscriptionId String
+  subscription   Subscription @relation(fields: [subscriptionId], references: [id])
+  kind           NoticeKind
+  channels       String[]     // ex. ["SMS","EMAIL","BACKOFFICE"]
+  recipientPhone String?
+  recipientEmail String?
+  content        String       // texte exact envoyé
+  deadlineAt     DateTime?    // date butoir mentionnée
+  sentAt         DateTime     @default(now())
+
+  @@unique([subscriptionId, kind]) // une notice de chaque type par abonnement (idempotence du cron)
+  @@index([agencyId, sentAt])
 }
