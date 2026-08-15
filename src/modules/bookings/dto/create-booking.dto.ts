@@ -1,5 +1,7 @@
 import { IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
+export const ID_TYPES = ['CNI', 'RECEPISSE', 'PASSEPORT', 'CARTE_SEJOUR', 'AUTRE'] as const;
+
 export class CreateBookingDto {
   @IsString() @IsNotEmpty()
   tripId: string;
@@ -16,6 +18,12 @@ export class CreateBookingDto {
 
   @IsString() @IsNotEmpty()
   passengerPhone: string;
+
+  @IsOptional() @IsIn(['SMS', 'WHATSAPP'])
+  ticketChannel?: 'SMS' | 'WHATSAPP';
+
+  @IsOptional() @IsIn(ID_TYPES as any)
+  passengerIdType?: (typeof ID_TYPES)[number];
 
   @IsOptional() @IsString()
   passengerIdNumber?: string;

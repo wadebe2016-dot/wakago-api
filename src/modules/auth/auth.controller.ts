@@ -11,7 +11,7 @@ export class AuthController {
   @Public()
   @Post('otp/request')
   requestOtp(@Body() dto: RequestOtpDto) {
-    return this.auth.requestOtp(dto.phone);
+    return this.auth.requestOtp(dto.phone, dto.channel ?? 'SMS');
   }
 
   /** Voyageur — étape 2 : vérifier le code et recevoir le JWT. */

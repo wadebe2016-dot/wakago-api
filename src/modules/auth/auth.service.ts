@@ -8,6 +8,7 @@ import * as bcrypt from 'bcryptjs';
 import { randomInt } from 'crypto';
 import Redis from 'ioredis';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationsService, Channel } from '../subscriptions/notifications.service';
 
 export interface JwtUser {
   sub: string;                 // travelerId, agencyUserId ou platformAdminId
@@ -27,14 +28,15 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
+    private readonly notify: NotificationsService,
   ) {
     this.redis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379');
   }
 
   // ------------------------- VOYAGEUR (OTP) -------------------------
 
-  /** Étape 1 : demande d'un code OTP par SMS. */
-  async requestOtp(phone: string) {
+  /** Étape 1 : demande d'un code OTP par SMS ou WhatsApp (au choix du voyageur). */
+  async requestOtp(phone: string, channel: Channel = 'SMS') {
     const cooldownKey = `otp:cooldown:${phone}`;
     if (await this.redis.get(cooldownKey))
       throw new BadRequestException('Patientez une minute avant de redemander un code');
@@ -44,12 +46,16 @@ export class AuthService {
     await this.redis.set(`otp:tries:${phone}`, '0', 'EX', OTP_TTL_SECONDS);
     await this.redis.set(cooldownKey, '1', 'EX', OTP_REQUEST_COOLDOWN);
 
-    // TODO passerelle SMS réelle (SMS_GATEWAY_URL). En attendant : log serveur.
-    console.log(`[SMS stub] OTP pour ${phone} : ${code}`);
+    const text = `Wakago : votre code de vérification est ${code}. Valable 5 minutes.`;
+    let sent = await this.notify.send(channel, phone, text, { template: 'otp', params: [code] });
+    let used: Channel = channel;
+    if (!sent && channel === 'WHATSAPP') { sent = await this.notify.sendSms(phone, text); used = 'SMS'; } // repli
+    if (!sent) throw new BadRequestException('Envoi du code impossible, réessayez');
 
     const isProd = process.env.NODE_ENV === 'production';
     return {
-      message: 'Code envoyé par SMS',
+      message: used === 'WHATSAPP' ? 'Code envoyé par WhatsApp' : 'Code envoyé par SMS',
+      channel: used,
       expiresInSeconds: OTP_TTL_SECONDS,
       // Facilité de dev/test uniquement — jamais exposé en production :
       ...(isProd ? {} : { devCode: code }),

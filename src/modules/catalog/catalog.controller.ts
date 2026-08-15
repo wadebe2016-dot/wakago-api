@@ -5,7 +5,7 @@ import { JwtUser } from '../auth/auth.service';
 import {
   CreateBoardingPointDto, CreateBusDto, CreateCityDto, CreateRouteDto, CreateScheduleDto,
   CreateSeatMapDto, CreateTripDto, GenerateTripsDto, UpdateBoardingPointDto, UpdateBusDto,
-  UpdateRouteDto, UpdateScheduleDto, UpdateTripDto,
+  UpdateAgencySettingsDto, UpdateRouteDto, UpdateScheduleDto, UpdateTripDto,
 } from './dto/catalog.dto';
 
 /** Back-office agence : paramétrage du réseau, de la flotte et des départs. */
@@ -13,6 +13,12 @@ import {
 @Roles('OWNER', 'MANAGER')
 export class CatalogController {
   constructor(private readonly catalog: CatalogService) {}
+
+  // Paramètres de l'agence
+  @Get('settings')
+  settings(@CurrentUser() u: JwtUser) { return this.catalog.getSettings(u); }
+  @Patch('settings')
+  updateSettings(@Body() dto: UpdateAgencySettingsDto, @CurrentUser() u: JwtUser) { return this.catalog.updateSettings(dto, u); }
 
   // Villes (référentiel partagé) — lecture publique (utile à l'app voyageur)
   @Public() @Get('cities')

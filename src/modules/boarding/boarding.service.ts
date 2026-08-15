@@ -134,6 +134,7 @@ export class BoardingService {
         seatNumber: b.seatNumber,
         passengerName: b.passengerName,
         passengerPhone: b.passengerPhone,
+        passengerIdType: b.passengerIdType,
         passengerIdNumber: b.passengerIdNumber,
         channel: b.channel,
         // qrToken inclus pour permettre la vérification HORS LIGNE

@@ -53,6 +53,13 @@ export class BookingsService {
       throw new BadRequestException('Agence inactive');
     if (!trip.bus)
       throw new BadRequestException('Aucun bus affecté à ce départ');
+    // Pièce d'identité : exigée selon la politique de l'agence (manifeste passagers)
+    if (trip.agency.requireIdNumber) {
+      if (!dto.passengerIdNumber || !dto.passengerIdNumber.trim())
+        throw new BadRequestException('Le numéro de pièce d\'identité du passager est requis par cette compagnie');
+      if (!dto.passengerIdType)
+        throw new BadRequestException('Le type de pièce d\'identité est requis (CNI, récépissé, passeport…)');
+    }
 
     // Le siège demandé existe-t-il dans le plan du bus ?
     const layout = trip.bus.seatMap.layout as { seats: (string | null)[] }[];
@@ -93,7 +100,9 @@ export class BookingsService {
             channel: dto.channel ?? 'APP',
             status: 'PENDING_PAYMENT',
             passengerName: dto.passengerName,
-            passengerIdNumber: dto.passengerIdNumber ?? null,
+            ticketChannel: dto.ticketChannel ?? 'SMS',
+            passengerIdType: dto.passengerIdType ?? null,
+            passengerIdNumber: dto.passengerIdNumber?.trim() || null,
             passengerPhone: dto.passengerPhone,
             amountFcfa: trip.priceFcfa,
             commissionFcfa: commission,

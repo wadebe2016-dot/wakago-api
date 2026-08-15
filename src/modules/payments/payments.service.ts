@@ -9,6 +9,7 @@ import { randomBytes, createHmac } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { BookingsService } from '../bookings/bookings.service';
 import { PaymentProvider, PushProvider } from './payment-provider';
+import { NotificationsService } from '../subscriptions/notifications.service';
 
 export const PAYMENT_PROVIDER = 'PAYMENT_PROVIDER';
 
@@ -17,6 +18,7 @@ export class PaymentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly bookings: BookingsService,
+    private readonly notify: NotificationsService,
     @Inject(PAYMENT_PROVIDER) private readonly provider: PaymentProvider,
   ) {}
 
@@ -110,8 +112,27 @@ export class PaymentsService {
     });
     await this.bookings.confirm(bookingId);
     const ticket = await this.issueTicket(bookingId);
-    // TODO (itération notifications) : push FCM + SMS avec le billet
+    await this.sendTicket(bookingId, ticket.qrToken).catch(() => undefined);
     return { ok: true, ticketId: ticket.id };
+  }
+
+  /** Envoie le billet au voyageur sur le canal qu'il a choisi (SMS ou WhatsApp). */
+  private async sendTicket(bookingId: string, qrToken: string) {
+    const b = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { agency: { select: { name: true } }, trip: { include: { route: { include: { originCity: true, destinationCity: true } }, boardingPoint: true } } },
+    });
+    if (!b) return;
+    const d = b.trip.departureAt;
+    const date = `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`;
+    const time = `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+    const ref = qrToken.split('.')[1]?.slice(-8).toUpperCase() ?? '';
+    const route = `${b.trip.route.originCity.name} → ${b.trip.route.destinationCity.name}`;
+    const text = `Bonjour ${b.passengerName}, votre billet ${b.agency.name} est confirmé : ${route}, le ${date} à ${time}, siège ${b.seatNumber}. Embarquement : ${b.trip.boardingPoint.name}. Réf. ${ref}. Présentez ce message ou le QR de l'application Wakago au contrôleur. Bon voyage !`;
+    const channel = (b.ticketChannel === 'WHATSAPP' ? 'WHATSAPP' : 'SMS') as 'SMS' | 'WHATSAPP';
+    // Modèle Meta wakago_billet : {{1}} nom, {{2}} agence, {{3}} trajet, {{4}} date heure, {{5}} siège, {{6}} référence
+    const ok = await this.notify.send(channel, b.passengerPhone, text, { template: 'ticket', params: [b.passengerName, b.agency.name, route, `${date} ${time}`, b.seatNumber, ref] });
+    if (!ok && channel === 'WHATSAPP') await this.notify.sendSms(b.passengerPhone, text);
   }
 
   /** Émet le billet avec un jeton QR signé (HMAC), idempotent. */

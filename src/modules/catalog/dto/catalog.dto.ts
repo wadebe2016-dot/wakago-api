@@ -89,3 +89,8 @@ export class UpdateTripDto {
   @IsOptional() @IsISO8601() departureAt?: string;
   @IsOptional() @IsInt() @Min(0) priceFcfa?: number;
 }
+
+// ---- Paramètres de l'agence ----
+export class UpdateAgencySettingsDto {
+  @IsOptional() @IsBoolean() requireIdNumber?: boolean;
+}

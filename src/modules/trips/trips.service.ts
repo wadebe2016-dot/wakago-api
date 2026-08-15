@@ -22,7 +22,7 @@ export class TripsService {
         agency: { status: 'ACTIVE' },
       },
       include: {
-        agency: { select: { id: true, name: true } },
+        agency: { select: { id: true, name: true, requireIdNumber: true } },
         boardingPoint: { select: { name: true, address: true } },
         bus: { include: { seatMap: { select: { capacity: true } } } },
         _count: {
@@ -37,6 +37,7 @@ export class TripsService {
     return trips.map((t) => ({
       id: t.id,
       agency: t.agency.name,
+      requireIdNumber: t.agency.requireIdNumber,
       departureAt: t.departureAt,
       boardingPoint: t.boardingPoint,
       priceFcfa: t.priceFcfa,

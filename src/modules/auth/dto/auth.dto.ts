@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, Length, Matches, MinLength } from 'class-validator';
+import { IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, Length, Matches, MinLength } from 'class-validator';
 
 const PHONE_RULE = /^6\d{8}$/;
 const PHONE_MSG = 'Numéro camerounais attendu : 6XXXXXXXX';
@@ -6,6 +6,9 @@ const PHONE_MSG = 'Numéro camerounais attendu : 6XXXXXXXX';
 export class RequestOtpDto {
   @Matches(PHONE_RULE, { message: PHONE_MSG })
   phone: string;
+
+  @IsOptional() @IsIn(['SMS', 'WHATSAPP'])
+  channel?: 'SMS' | 'WHATSAPP';
 }
 
 export class VerifyOtpDto {

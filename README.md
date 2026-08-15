@@ -158,3 +158,24 @@ Rôle `platform` (table PlatformAdmin, login `POST /auth/platform/login` {email,
 (chaque minute), réconciliation billets + abonnements (toutes les 2 min), cycle de vie
 des abonnements (chaque jour 06:00 heure serveur). `JOBS_ENABLED=false` pour désactiver
 sur d'éventuels réplicas. Visible dans `pm2 logs wakago-api` (préfixe [Jobs]).
+
+## Pièce d'identité du passager (v0.8)
+Obligation légale du manifeste passagers : par défaut chaque agence exige un
+numéro de pièce (`Agency.requireIdNumber = true`, modifiable via
+`GET|PATCH /agency/settings`). `POST /bookings/hold` exige alors
+`passengerIdType` (CNI | RECEPISSE | PASSEPORT | CARTE_SEJOUR | AUTRE) et
+`passengerIdNumber`. La recherche publique expose `requireIdNumber` par départ
+pour que les apps sachent quoi demander. Le manifeste contrôleur inclut type +
+numéro. Migration `20260815120000_passenger_id`.
+
+## Notifications SMS / WhatsApp (v0.9)
+Le voyageur choisit son canal (SMS ou WhatsApp) pour le code de vérification
+(`POST /auth/otp/request` {phone, channel}) et pour recevoir son billet
+(`ticketChannel` sur `POST /bookings/hold`) ; repli automatique SMS si WhatsApp
+échoue. Fournisseurs configurés par .env : `SMS_PROVIDER=http` (passerelle POST
+JSON générique : {to, from, message}) et `WA_PROVIDER=meta` (WhatsApp Business
+Cloud API, modèles WA_TEMPLATE_OTP / WA_TEMPLATE_TICKET). Sans clés : mode log.
+Modèle billet (6 variables) : « Bonjour {{1}}, votre billet {{2}} est confirmé :
+{{3}}, le {{4}}, siège {{5}}. Réf. {{6}}. Présentez ce message ou le QR de
+l'application Wakago au contrôleur. Bon voyage ! » — {{2}} = nom de l'agence.
+Migration `20260815130000_ticket_channel`.

@@ -38,6 +38,9 @@ model Agency {
   // Les secrets seront chiffrés au repos (itération sécurité) — jamais renvoyés par l'API.
   campayAppUsername String?
   campayAppPassword String?
+  // Politique de l'agence : exiger une pièce d'identité à la réservation (obligation
+  // légale du manifeste passagers au Cameroun ; désactivable pour navettes courtes)
+  requireIdNumber   Boolean         @default(true)
   // Conservés pour compatibilité (non utilisés dans le modèle abonnement)
   commissionRate    Decimal         @default(0) @db.Decimal(5, 2)
   payoutFrequency   PayoutFrequency @default(WEEKLY)
@@ -232,6 +235,14 @@ enum BookingChannel {
   COUNTER // guichet
 }
 
+enum IdType {
+  CNI        // carte nationale d'identité
+  RECEPISSE  // récépissé de CNI
+  PASSEPORT
+  CARTE_SEJOUR
+  AUTRE
+}
+
 enum BookingStatus {
   PENDING_PAYMENT // siège bloqué, paiement en cours (TTL 10 min)
   CONFIRMED
@@ -254,7 +265,10 @@ model Booking {
   channel           BookingChannel
   status            BookingStatus  @default(PENDING_PAYMENT)
   passengerName     String
-  passengerIdNumber String?        // n° CNI si exigé par la compagnie
+  // Canal choisi par le voyageur pour recevoir le billet (SMS ou WhatsApp)
+  ticketChannel     String?        @default("SMS")
+  passengerIdType   IdType?
+  passengerIdNumber String?        // n° de pièce (exigé si Agency.requireIdNumber)
   passengerPhone    String
   amountFcfa        Int            // prix payé
   commissionFcfa    Int            @default(0) // commission plateforme retenue

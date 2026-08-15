@@ -10,7 +10,7 @@ import { JwtUser } from '../auth/auth.service';
 import {
   CreateBoardingPointDto, CreateBusDto, CreateCityDto, CreateRouteDto, CreateScheduleDto,
   CreateSeatMapDto, CreateTripDto, GenerateTripsDto, UpdateBoardingPointDto, UpdateBusDto,
-  UpdateRouteDto, UpdateScheduleDto, UpdateTripDto,
+  UpdateAgencySettingsDto, UpdateRouteDto, UpdateScheduleDto, UpdateTripDto,
 } from './dto/catalog.dto';
 
 const DAY = 86400000;
@@ -44,6 +44,16 @@ export class CatalogService {
       : await this.prisma.route.count({ where: { agencyId, isActive: true } });
     if (count >= limit)
       throw new BadRequestException(`Palier atteint : votre plan « ${sub.plan.name} » autorise ${limit} ${kind === 'bus' ? 'bus' : 'ligne(s)'} actif(s). Passez à un plan supérieur.`);
+  }
+
+  // ---------------------------- PARAMÈTRES AGENCE ----------------------------
+
+  getSettings(user: JwtUser) {
+    return this.prisma.agency.findUnique({ where: { id: this.agencyId(user) }, select: { id: true, name: true, slug: true, phone: true, email: true, requireIdNumber: true } });
+  }
+
+  updateSettings(dto: UpdateAgencySettingsDto, user: JwtUser) {
+    return this.prisma.agency.update({ where: { id: this.agencyId(user) }, data: dto, select: { id: true, name: true, requireIdNumber: true } });
   }
 
   // ------------------------------- VILLES -------------------------------
