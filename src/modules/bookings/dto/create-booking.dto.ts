@@ -7,8 +7,9 @@ export class CreateBookingDto {
   @IsString() @IsNotEmpty()
   seatNumber: string;
 
-  @IsIn(['APP', 'COUNTER'])
-  channel: 'APP' | 'COUNTER';
+  /** Imposé côté serveur selon le rôle du token (APP ou COUNTER). */
+  @IsOptional() @IsIn(['APP', 'COUNTER'])
+  channel?: 'APP' | 'COUNTER';
 
   @IsString() @IsNotEmpty()
   passengerName: string;
@@ -19,6 +20,7 @@ export class CreateBookingDto {
   @IsOptional() @IsString()
   passengerIdNumber?: string;
 
-  @IsOptional() @IsString()
+  /** Renseignés par le serveur depuis le token — jamais par le client. */
   travelerId?: string;
+  cashierId?: string;
 }

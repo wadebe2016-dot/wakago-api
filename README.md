@@ -49,3 +49,16 @@ Chaîne complète : `POST /bookings/hold` → `POST /payments/initiate`
   réservation.
 - Bascule vers l'agrégateur réel : implémenter `PaymentProvider` (ex.
   `CampayProvider`) et changer la factory dans `payments.module.ts`.
+
+## Module Auth (v0.3)
+- Voyageur : `POST /auth/otp/request` {phone} puis `POST /auth/otp/verify`
+  {phone, code} → token JWT 30 j. Hors production, le code OTP est renvoyé
+  dans la réponse (devCode) et journalisé côté serveur.
+- Agence : `POST /auth/agency/login` {agencySlug, phone, password} → token 12 h.
+  Comptes de démo (après seed) : slug `express-littoral`,
+  699000001 / wakago-demo-2026 (OWNER), 699000002 / guichet-demo-2026 (CASHIER).
+- Routes protégées : `bookings/hold` (token requis ; canal et identité imposés
+  par le rôle), `payments/initiate` et `payments/:id/status` (token requis),
+  `payments/reconcile` (OWNER/MANAGER). Webhook public (signature vérifiée),
+  recherche et plan de sièges publics.
+- Utiliser le token : en-tête `Authorization: Bearer <token>`.

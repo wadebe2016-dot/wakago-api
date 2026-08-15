@@ -9,6 +9,7 @@
  * Idempotent : relançable sans créer de doublons (upsert / vérifications).
  */
 const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 // Plan de bus 30 places : 7 rangées de 4 (2+2) + rangée arrière de 2
@@ -39,6 +40,19 @@ async function main() {
     },
   });
   console.log('Agence :', agency.name);
+
+  // 1bis. Comptes agence (login back-office / guichet)
+  async function agencyUser(role, fullName, phone, password) {
+    const hash = await bcrypt.hash(password, 10);
+    return prisma.agencyUser.upsert({
+      where: { agencyId_phone: { agencyId: agency.id, phone } },
+      update: { role, fullName, isActive: true },
+      create: { agencyId: agency.id, role, fullName, phone, passwordHash: hash },
+    });
+  }
+  await agencyUser('OWNER', 'Patron Démo', '699000001', 'wakago-demo-2026');
+  await agencyUser('CASHIER', 'Guichetier Démo', '699000002', 'guichet-demo-2026');
+  console.log('Comptes agence : 699000001 (OWNER), 699000002 (CASHIER)');
 
   // 2. Villes
   const cityData = [
