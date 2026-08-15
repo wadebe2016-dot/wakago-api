@@ -1,36 +1,27 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
-import { AuthUser, CurrentUser, JwtAuthGuard, Roles } from '../../common/auth.guard';
+import { CurrentUser, Public, Roles } from '../auth/jwt-auth.guard';
+import { JwtUser } from '../auth/auth.service';
 
 @Controller()
 export class BookingsController {
   constructor(private readonly bookings: BookingsService) {}
 
-  /** Plan de sièges d'un départ (FREE / HELD / TAKEN) — public. */
+  /** Plan de sièges d'un départ — public (consultation avant connexion). */
+  @Public()
   @Get('trips/:tripId/seats')
   seatMap(@Param('tripId') tripId: string) {
     return this.bookings.seatMap(tripId);
   }
 
   /**
-   * Bloque un siège 10 min. Authentifié :
-   * - voyageur (app) : channel forcé APP, travelerId pris du token
-   * - guichetier : channel forcé COUNTER, cashierId pris du token
+   * Bloque un siège : voyageur connecté (app) ou guichetier/gestionnaire (comptoir).
+   * Le travelerId provient du jeton, jamais du corps de la requête.
    */
+  @Roles('traveler', 'CASHIER', 'MANAGER', 'OWNER')
   @Post('bookings/hold')
-  @UseGuards(JwtAuthGuard)
-  @Roles('TRAVELER', 'CASHIER', 'MANAGER', 'OWNER')
-  hold(@Body() dto: CreateBookingDto, @CurrentUser() user: AuthUser) {
-    if (user.role === 'TRAVELER') {
-      dto.channel = 'APP';
-      dto.travelerId = user.sub;
-      dto.cashierId = undefined;
-    } else {
-      dto.channel = 'COUNTER';
-      dto.cashierId = user.sub;
-      dto.travelerId = undefined;
-    }
-    return this.bookings.holdSeat(dto);
+  hold(@Body() dto: CreateBookingDto, @CurrentUser() user: JwtUser) {
+    return this.bookings.holdSeat(dto, user);
   }
 }

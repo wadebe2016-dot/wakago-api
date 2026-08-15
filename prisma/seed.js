@@ -41,18 +41,22 @@ async function main() {
   });
   console.log('Agence :', agency.name);
 
-  // 1bis. Comptes agence (login back-office / guichet)
-  async function agencyUser(role, fullName, phone, password) {
-    const hash = await bcrypt.hash(password, 10);
+  // 1b. Comptes du personnel d'agence — mot de passe de démo : Wakago2026!
+  //     (le seed RÉINITIALISE ce mot de passe à chaque exécution : pratique en dev,
+  //      à retirer avant la production)
+  const DEMO_PASSWORD = 'Wakago2026!';
+  const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
+  async function agencyUser(phone, fullName, role) {
     return prisma.agencyUser.upsert({
       where: { agencyId_phone: { agencyId: agency.id, phone } },
-      update: { role, fullName, isActive: true },
-      create: { agencyId: agency.id, role, fullName, phone, passwordHash: hash },
+      update: { role, fullName, isActive: true, passwordHash },
+      create: { agencyId: agency.id, phone, fullName, role, passwordHash },
     });
   }
-  await agencyUser('OWNER', 'Patron Démo', '699000001', 'wakago-demo-2026');
-  await agencyUser('CASHIER', 'Guichetier Démo', '699000002', 'guichet-demo-2026');
-  console.log('Comptes agence : 699000001 (OWNER), 699000002 (CASHIER)');
+  await agencyUser('699000001', 'Gérant Démo', 'OWNER');
+  await agencyUser('699000002', 'Guichetier Démo', 'CASHIER');
+  await agencyUser('699000003', 'Contrôleur Démo', 'CONTROLLER');
+  console.log(`Comptes agence (slug: ${agency.slug}) : 699000001 OWNER, 699000002 CASHIER, 699000003 CONTROLLER — mot de passe : ${DEMO_PASSWORD}`);
 
   // 2. Villes
   const cityData = [

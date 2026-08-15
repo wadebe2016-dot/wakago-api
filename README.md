@@ -62,3 +62,20 @@ Chaîne complète : `POST /bookings/hold` → `POST /payments/initiate`
   `payments/reconcile` (OWNER/MANAGER). Webhook public (signature vérifiée),
   recherche et plan de sièges publics.
 - Utiliser le token : en-tête `Authorization: Bearer <token>`.
+
+## Module Auth (v0.3)
+Toute l'API exige désormais un jeton JWT (`Authorization: Bearer <token>`),
+sauf les routes marquées publiques : recherche de trajets, plan de sièges,
+webhook paiement, et les routes d'authentification.
+
+- Voyageur : `POST /auth/otp/request` {phone} → SMS (stub : code loggé,
+  et champ devCode hors production) puis `POST /auth/otp/verify`
+  {phone, code} → accessToken.
+- Agence : `POST /auth/agency/login` {agencySlug, phone, password} → accessToken
+  portant agencyId et rôle (OWNER, MANAGER, CASHIER, CONTROLLER).
+- `/bookings/hold` : voyageur (channel APP) ou compte agence (channel
+  COUNTER) ; le travelerId provient du jeton, plus du corps de requête.
+- Comptes de démo (via seed, agencySlug `express-littoral`) : 699000001 (OWNER),
+  699000002 (CASHIER), 699000003 (CONTROLLER) — mot de passe `Wakago2026!`.
+  Le seed réinitialise ce mot de passe à chaque exécution (dev uniquement).
+- IMPORTANT production : définir un JWT_SECRET fort dans .env.

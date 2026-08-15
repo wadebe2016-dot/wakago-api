@@ -7,6 +7,7 @@ import {
 import Redis from 'ioredis';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
+import { JwtUser } from '../auth/auth.service';
 
 /**
  * Cœur anti-double-vente. Trois lignes de défense :
@@ -35,7 +36,12 @@ export class BookingsService {
    * Étape 1 du parcours : bloquer un siège pendant que le voyageur paie.
    * Crée un Booking PENDING_PAYMENT avec expiresAt = now + TTL.
    */
-  async holdSeat(dto: CreateBookingDto) {
+  async holdSeat(dto: CreateBookingDto, user?: JwtUser) {
+    // Cohérence profil/canal : un voyageur réserve via APP, un compte agence via COUNTER
+    if (user?.type === 'traveler' && dto.channel !== 'APP')
+      throw new BadRequestException('Canal invalide pour un compte voyageur');
+    if (user?.type === 'agency' && dto.channel !== 'COUNTER')
+      throw new BadRequestException('Canal invalide pour un compte agence');
     const trip = await this.prisma.trip.findUnique({
       where: { id: dto.tripId },
       include: { agency: true, bus: { include: { seatMap: true } } },
@@ -82,9 +88,9 @@ export class BookingsService {
             agencyId: trip.agencyId,
             tripId: dto.tripId,
             seatNumber: dto.seatNumber,
-            travelerId: dto.travelerId ?? null,
-            cashierId: dto.cashierId ?? null,
-            channel: dto.channel ?? 'APP',
+            travelerId: user?.type === 'traveler' ? user.sub : null,
+            cashierId: user?.type === 'agency' ? user.sub : null,
+            channel: dto.channel,
             status: 'PENDING_PAYMENT',
             passengerName: dto.passengerName,
             passengerIdNumber: dto.passengerIdNumber ?? null,

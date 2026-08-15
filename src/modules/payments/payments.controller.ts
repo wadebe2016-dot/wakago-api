@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Headers, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
+import { Public } from '../auth/jwt-auth.guard';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
 import { JwtAuthGuard, Roles } from '../../common/auth.guard';
 

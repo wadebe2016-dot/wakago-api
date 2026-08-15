@@ -1,15 +1,13 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { TripsService } from './trips.service';
+import { Public } from '../auth/jwt-auth.guard';
 
 @Controller('trips')
 export class TripsController {
   constructor(private readonly trips: TripsService) {}
 
-  /**
-   * Recherche voyageur : GET /api/v1/trips/search?from=<cityId>&to=<cityId>&date=YYYY-MM-DD
-   * Retourne les départs de toutes les agences actives, triés par heure,
-   * avec le nombre de places restantes.
-   */
+  /** Recherche publique des départs (pas besoin de compte pour consulter). */
+  @Public()
   @Get('search')
   search(
     @Query('from') from: string,
