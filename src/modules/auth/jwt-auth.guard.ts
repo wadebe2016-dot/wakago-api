@@ -61,6 +61,7 @@ export class JwtAuthGuard implements CanActivate {
 
     const ok =
       (roles.includes('traveler') && user.type === 'traveler') ||
+      (roles.includes('platform') && user.type === 'platform') ||
       (user.type === 'agency' && user.role && roles.includes(user.role));
     if (!ok) throw new UnauthorizedException('Accès refusé pour ce profil');
     return true;

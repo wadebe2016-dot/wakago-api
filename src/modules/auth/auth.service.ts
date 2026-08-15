@@ -10,8 +10,8 @@ import Redis from 'ioredis';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface JwtUser {
-  sub: string;                 // travelerId ou agencyUserId
-  type: 'traveler' | 'agency';
+  sub: string;                 // travelerId, agencyUserId ou platformAdminId
+  type: 'traveler' | 'agency' | 'platform';
   agencyId?: string;
   role?: 'OWNER' | 'MANAGER' | 'CASHIER' | 'CONTROLLER';
 }
@@ -82,6 +82,19 @@ export class AuthService {
     return {
       accessToken: await this.jwt.signAsync(payload),
       traveler: { id: traveler.id, phone: traveler.phone, fullName: traveler.fullName },
+    };
+  }
+
+  // --------------------- ADMIN PLATEFORME (email + mot de passe) ---------------------
+
+  async platformLogin(email: string, password: string) {
+    const admin = await this.prisma.platformAdmin.findUnique({ where: { email: email.toLowerCase() } });
+    if (!admin || !admin.isActive || !(await bcrypt.compare(password, admin.passwordHash)))
+      throw new UnauthorizedException('Identifiants invalides');
+    const payload: JwtUser = { sub: admin.id, type: 'platform' };
+    return {
+      accessToken: await this.jwt.signAsync(payload, { expiresIn: '12h' }),
+      admin: { id: admin.id, email: admin.email, fullName: admin.fullName },
     };
   }
 

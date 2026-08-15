@@ -1,6 +1,6 @@
 {
   "name": "wakago-api",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "API Wakago - plateforme de reservation de bus interurbains (Atlastech Solution)",
   "private": true,
   "scripts": {
@@ -24,7 +24,8 @@
     "class-validator": "^0.14.1",
     "ioredis": "^5.4.1",
     "reflect-metadata": "^0.2.2",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "@nestjs/schedule": "^4.1.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.4.0",

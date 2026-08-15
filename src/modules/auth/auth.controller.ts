@@ -1,7 +1,7 @@
 import { Body, Controller, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from './jwt-auth.guard';
-import { AgencyLoginDto, RequestOtpDto, VerifyOtpDto } from './dto/auth.dto';
+import { AgencyLoginDto, PlatformLoginDto, RequestOtpDto, VerifyOtpDto } from './dto/auth.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -26,5 +26,12 @@ export class AuthController {
   @Post('agency/login')
   agencyLogin(@Body() dto: AgencyLoginDto) {
     return this.auth.agencyLogin(dto.agencySlug, dto.phone, dto.password);
+  }
+
+  /** Administrateur plateforme (Atlastech) : email + mot de passe. */
+  @Public()
+  @Post('platform/login')
+  platformLogin(@Body() dto: PlatformLoginDto) {
+    return this.auth.platformLogin(dto.email, dto.password);
   }
 }

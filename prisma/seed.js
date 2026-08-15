@@ -58,6 +58,16 @@ async function main() {
   await agencyUser('699000003', 'Contrôleur Démo', 'CONTROLLER');
   console.log(`Comptes agence (slug: ${agency.slug}) : 699000001 OWNER, 699000002 CASHIER, 699000003 CONTROLLER — mot de passe : ${DEMO_PASSWORD}`);
 
+  // 0. Administrateur plateforme (Atlastech) — mot de passe initial à changer
+  const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL || 'admin@atlastech.cm';
+  const ADMIN_PASSWORD = process.env.SEED_ADMIN_PASSWORD || 'Atlastech2026!';
+  await prisma.platformAdmin.upsert({
+    where: { email: ADMIN_EMAIL },
+    update: { isActive: true, passwordHash: await bcrypt.hash(ADMIN_PASSWORD, 10) },
+    create: { email: ADMIN_EMAIL, fullName: 'Administrateur Atlastech', passwordHash: await bcrypt.hash(ADMIN_PASSWORD, 10) },
+  });
+  console.log(`Admin plateforme : ${ADMIN_EMAIL} (mot de passe : ${ADMIN_PASSWORD})`);
+
   // 1c. Plans d'abonnement (grille de départ — à valider commercialement)
   const plans = [
     { code: 'STARTER_M', name: 'Starter mensuel',   period: 'MONTHLY',   priceFcfa: 15000,  maxBuses: 3,   maxRoutes: 3,   trialDays: 30, sortOrder: 1 },

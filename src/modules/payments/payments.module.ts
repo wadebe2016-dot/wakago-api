@@ -15,5 +15,6 @@ import { SandboxPaymentProvider } from './payment-provider';
       useFactory: () => new SandboxPaymentProvider(),
     },
   ],
+  exports: [PaymentsService],
 })
 export class PaymentsModule {}

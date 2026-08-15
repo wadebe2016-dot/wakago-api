@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, Length, Matches, MinLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, Length, Matches, MinLength } from 'class-validator';
 
 const PHONE_RULE = /^6\d{8}$/;
 const PHONE_MSG = 'Numéro camerounais attendu : 6XXXXXXXX';
@@ -23,6 +23,14 @@ export class AgencyLoginDto {
 
   @Matches(PHONE_RULE, { message: PHONE_MSG })
   phone: string;
+
+  @IsString() @MinLength(8)
+  password: string;
+}
+
+export class PlatformLoginDto {
+  @IsEmail()
+  email: string;
 
   @IsString() @MinLength(8)
   password: string;

@@ -36,24 +36,24 @@ export class SubscriptionsController {
     return this.subs.pay(dto.subscriptionId, dto.provider, dto.payerPhone, user);
   }
 
-  // ---- Opérations plateforme (TODO : réserver à l'admin Atlastech quand le rôle existera) ----
+  // ---- Opérations plateforme (rôle 'platform') ; les crons utilisent un jeton plateforme ----
 
   /** Réconciliation des paiements d'abonnement (cron). */
-  @Public()
+  @Roles('platform')
   @Post('reconcile')
   reconcile() {
     return this.subs.reconcilePending();
   }
 
   /** Cycle de vie quotidien : rappels, mise en demeure, seconde relance, suspension. */
-  @Public()
+  @Roles('platform')
   @Post('lifecycle/run')
   lifecycle() {
     return this.subs.runLifecycle();
   }
 
   /** Sursis manuel accordé par la plateforme. */
-  @Public()
+  @Roles('platform')
   @Post(':id/extension')
   extension(@Param('id') id: string, @Body() dto: ExtensionDto) {
     return this.subs.grantExtension(id, dto.extraDays);

@@ -8,6 +8,8 @@ import { TripsModule } from './modules/trips/trips.module';
 import { BoardingModule } from './modules/boarding/boarding.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { JobsModule } from './modules/jobs/jobs.module';
 
 @Module({
   imports: [
@@ -20,7 +22,8 @@ import { CatalogModule } from './modules/catalog/catalog.module';
     BoardingModule,
     SubscriptionsModule,
     CatalogModule,
-    // À venir : AgenciesModule (admin plateforme)
+    AdminModule,
+    JobsModule,
   ],
 })
 export class AppModule {}

@@ -134,3 +134,27 @@ Préfixe `/agency`, réservé à OWNER / MANAGER, cloisonné par agence.
   `PATCH /agency/trips/:id` (refuse un bus trop petit pour les sièges déjà vendus),
   `DELETE /agency/trips/:id` = annulation (réservations et billets → CANCELLED ;
   remboursements : module à venir).
+
+## Module Admin — plateforme Atlastech (v0.7)
+Rôle `platform` (table PlatformAdmin, login `POST /auth/platform/login` {email, password}).
+- `GET /admin/dashboard` — agences et abonnements par statut, billets du jour/mois,
+  revenus d'abonnement du mois, voyageurs, départs à venir.
+- Agences : `GET /admin/agencies?status=`, `GET /admin/agencies/:id` (jamais les
+  identifiants Campay, seulement `campayConfigured`), `POST /admin/agencies`
+  (onboarding : crée l'agence + le gérant, renvoie un mot de passe temporaire UNE fois),
+  `PATCH /admin/agencies/:id/status`, `POST /admin/agency-users/:id/reset-password`.
+- Plans : `GET|POST /admin/plans` (upsert par code).
+- Abonnements : `GET /admin/subscriptions?status=`, `POST /admin/subscriptions/:id/extension`
+  (sursis), `POST /admin/subscriptions/:id/activate-manually` {reference} (paiement reçu
+  hors ligne), `POST /admin/subscriptions/lifecycle/run`.
+- Les routes plateforme de Payments/Subscriptions (reconcile, lifecycle, extension) exigent
+  désormais un jeton `platform` (plus @Public).
+- Seed : admin `admin@atlastech.cm` / `Atlastech2026!` (variables SEED_ADMIN_EMAIL /
+  SEED_ADMIN_PASSWORD) — À CHANGER en production.
+- Migration `20260815110000_platform_admin`.
+
+## Module Jobs — tâches planifiées internes (v0.7)
+`@nestjs/schedule`, sans crontab système ni jeton : expiration des blocages de sièges
+(chaque minute), réconciliation billets + abonnements (toutes les 2 min), cycle de vie
+des abonnements (chaque jour 06:00 heure serveur). `JOBS_ENABLED=false` pour désactiver
+sur d'éventuels réplicas. Visible dans `pm2 logs wakago-api` (préfixe [Jobs]).

@@ -83,6 +83,17 @@ model AgencyUser {
   @@index([agencyId])
 }
 
+// ------------------------ ADMIN PLATEFORME (Atlastech) --------------------
+
+model PlatformAdmin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  fullName     String
+  passwordHash String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
+
 // ---------------------------- VOYAGEURS ------------------------------
 
 model Traveler {

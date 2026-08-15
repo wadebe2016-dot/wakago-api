@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Headers, HttpCode, Param, Post, Req } from '@nestjs/common';
 import { PaymentsService } from './payments.service';
 import { InitiatePaymentDto } from './dto/initiate-payment.dto';
-import { Public } from '../auth/jwt-auth.guard';
+import { Public, Roles } from '../auth/jwt-auth.guard';
 
 @Controller('payments')
 export class PaymentsController {
@@ -44,8 +44,8 @@ export class PaymentsController {
     return this.payments.getStatus(id);
   }
 
-  /** Réconciliation manuelle (cron à venir). TODO restreindre à l'admin plateforme. */
-  @Public()
+  /** Réconciliation des paiements en attente (cron, jeton plateforme). */
+  @Roles('platform')
   @Post('reconcile')
   reconcile() {
     return this.payments.reconcilePending();
