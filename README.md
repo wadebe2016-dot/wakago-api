@@ -118,3 +118,19 @@ Le contrôleur voit donc les billets forgés et les doublons même sans réseau.
 - Migration `20260815100000_subscriptions`. Déploiement : `npx prisma migrate deploy
   && npx prisma generate` AVANT `npm run build`.
 - Crons à installer (pm2/cron) : reconcile toutes les 2 min, lifecycle 1×/jour.
+
+## Module Catalog — back-office agence (v0.6)
+Préfixe `/agency`, réservé à OWNER / MANAGER, cloisonné par agence.
+- Villes : `GET /agency/cities?q=` (public), `POST /agency/cities` (idempotent).
+- Points d'embarquement : `GET|POST /agency/boarding-points`, `PATCH /agency/boarding-points/:id`.
+- Lignes : `GET|POST /agency/routes`, `PATCH /agency/routes/:id` — palier maxRoutes du plan vérifié.
+- Grille horaire : `GET|POST /agency/routes/:routeId/schedules`, `PATCH /agency/schedules/:id`
+  (departureTime HH:mm, daysOfWeek 1=lundi…7=dimanche, priceFcfa).
+- Génération des départs : `POST /agency/routes/:routeId/generate-trips`
+  {fromDate, toDate (≤60 j), boardingPointId, busId?} — idempotent (n'écrase pas l'existant).
+- Plans de sièges : `GET|POST /agency/seat-maps` (validation : sièges uniques, null = allée).
+- Bus : `GET|POST /agency/buses`, `PATCH /agency/buses/:id` — palier maxBuses vérifié.
+- Départs : `GET /agency/trips?from=&to=`, `POST /agency/trips` (ponctuel),
+  `PATCH /agency/trips/:id` (refuse un bus trop petit pour les sièges déjà vendus),
+  `DELETE /agency/trips/:id` = annulation (réservations et billets → CANCELLED ;
+  remboursements : module à venir).
