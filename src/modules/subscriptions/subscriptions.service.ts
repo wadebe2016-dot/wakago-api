@@ -119,7 +119,7 @@ export class SubscriptionsService {
     });
     const res = await this.provider.initiatePush({
       paymentId: payment.id, amountFcfa: sub.plan.priceFcfa, payerPhone, provider,
-      description: `Abonnement Wakago ${sub.plan.name}`,
+      description: `Abonnement ReadyGo ${sub.plan.name}`,
     });
     const updated = await this.prisma.subscriptionPayment.update({
       where: { id: payment.id },
@@ -151,7 +151,7 @@ export class SubscriptionsService {
       // Un nouveau cycle : on autorise de nouvelles notices (on supprime celles de l'ancien cycle)
       this.prisma.subscriptionNotice.deleteMany({ where: { subscriptionId: sub.id, kind: { in: ['REMINDER_7D', 'REMINDER_2D', 'FORMAL_NOTICE', 'SECOND_NOTICE', 'SUSPENSION'] } } }),
     ]);
-    if (wasSuspended) await this.sendNotice(sub.id, 'REACTIVATION', `Votre abonnement Wakago est réactivé. Nouvelle échéance : ${fmt(endsAt)}. Merci.`, null);
+    if (wasSuspended) await this.sendNotice(sub.id, 'REACTIVATION', `Votre abonnement ReadyGo est réactivé. Nouvelle échéance : ${fmt(endsAt)}. Merci.`, null);
     return { ok: true, endsAt };
   }
 
@@ -189,10 +189,10 @@ export class SubscriptionsService {
       const daysLeft = Math.ceil((s.endsAt!.getTime() - now.getTime()) / DAY);
       const has = (k: string) => s.notices.some((n) => n.kind === k);
       if (daysLeft <= c.reminder2Days && !has('REMINDER_2D')) {
-        await this.sendNotice(s.id, 'REMINDER_2D', `Rappel : votre abonnement Wakago expire le ${fmt(s.endsAt!)} (dans ${daysLeft} j). Renouvelez-le pour éviter toute interruption.`, s.endsAt);
+        await this.sendNotice(s.id, 'REMINDER_2D', `Rappel : votre abonnement ReadyGo expire le ${fmt(s.endsAt!)} (dans ${daysLeft} j). Renouvelez-le pour éviter toute interruption.`, s.endsAt);
         out.reminders2d++;
       } else if (!has('REMINDER_7D')) {
-        await this.sendNotice(s.id, 'REMINDER_7D', `Votre abonnement Wakago expire le ${fmt(s.endsAt!)}. Vous pouvez le renouveler dès maintenant depuis votre espace agence.`, s.endsAt);
+        await this.sendNotice(s.id, 'REMINDER_7D', `Votre abonnement ReadyGo expire le ${fmt(s.endsAt!)}. Vous pouvez le renouveler dès maintenant depuis votre espace agence.`, s.endsAt);
         out.reminders7d++;
       }
     }
@@ -203,7 +203,7 @@ export class SubscriptionsService {
       const graceEndsAt = addDays(s.endsAt!, c.graceDays);
       await this.prisma.subscription.update({ where: { id: s.id }, data: { status: 'GRACE', graceEndsAt } });
       await this.sendNotice(s.id, 'FORMAL_NOTICE',
-        `MISE EN DEMEURE — Votre abonnement Wakago est échu depuis le ${fmt(s.endsAt!)} et n'a pas été réglé. À défaut de paiement avant le ${fmt(graceEndsAt)}, votre agence sera suspendue de la plateforme (les billets déjà vendus resteront valides). Régularisez depuis votre espace agence.`,
+        `MISE EN DEMEURE — Votre abonnement ReadyGo est échu depuis le ${fmt(s.endsAt!)} et n'a pas été réglé. À défaut de paiement avant le ${fmt(graceEndsAt)}, votre agence sera suspendue de la plateforme (les billets déjà vendus resteront valides). Régularisez depuis votre espace agence.`,
         graceEndsAt);
       out.formalNotices++;
     }
@@ -214,7 +214,7 @@ export class SubscriptionsService {
       const daysSinceDue = (now.getTime() - s.endsAt!.getTime()) / DAY;
       if (daysSinceDue >= c.secondNoticeDay && !s.notices.some((n) => n.kind === 'SECOND_NOTICE')) {
         const left = Math.ceil((s.graceEndsAt!.getTime() - now.getTime()) / DAY);
-        await this.sendNotice(s.id, 'SECOND_NOTICE', `Dernier rappel — Il vous reste ${left} jour(s) avant la suspension de votre agence Wakago (échéance : ${fmt(s.graceEndsAt!)}). Réglez votre abonnement pour l'éviter.`, s.graceEndsAt);
+        await this.sendNotice(s.id, 'SECOND_NOTICE', `Dernier rappel — Il vous reste ${left} jour(s) avant la suspension de votre agence ReadyGo (échéance : ${fmt(s.graceEndsAt!)}). Réglez votre abonnement pour l'éviter.`, s.graceEndsAt);
         out.secondNotices++;
       }
     }
@@ -226,7 +226,7 @@ export class SubscriptionsService {
         this.prisma.subscription.update({ where: { id: s.id }, data: { status: 'SUSPENDED', suspendedAt: now } }),
         this.prisma.agency.update({ where: { id: s.agencyId }, data: { status: 'SUSPENDED' } }),
       ]);
-      await this.sendNotice(s.id, 'SUSPENSION', `Votre agence Wakago est suspendue pour abonnement impayé. Vos départs ne sont plus visibles des voyageurs ; les billets déjà vendus restent valides. Le paiement de votre abonnement réactive immédiatement votre agence.`, null);
+      await this.sendNotice(s.id, 'SUSPENSION', `Votre agence ReadyGo est suspendue pour abonnement impayé. Vos départs ne sont plus visibles des voyageurs ; les billets déjà vendus restent valides. Le paiement de votre abonnement réactive immédiatement votre agence.`, null);
       out.suspensions++;
     }
     return out;
@@ -239,7 +239,7 @@ export class SubscriptionsService {
     const phone = sub.agency.phone, email = sub.agency.email;
     const channels = ['BACKOFFICE', 'SMS', ...(email ? ['EMAIL'] : [])];
     await this.notify.sendSms(phone, content);
-    if (email) await this.notify.sendEmail(email, `Wakago — ${kind === 'FORMAL_NOTICE' ? 'Mise en demeure' : 'Abonnement'}`, content);
+    if (email) await this.notify.sendEmail(email, `ReadyGo — ${kind === 'FORMAL_NOTICE' ? 'Mise en demeure' : 'Abonnement'}`, content);
     try {
       await this.prisma.subscriptionNotice.create({
         data: { agencyId: sub.agencyId, subscriptionId, kind, channels, recipientPhone: phone, recipientEmail: email, content, deadlineAt },

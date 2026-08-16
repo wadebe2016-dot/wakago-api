@@ -128,9 +128,9 @@ export class PaymentsService {
     const time = `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
     const ref = qrToken.split('.')[1]?.slice(-8).toUpperCase() ?? '';
     const route = `${b.trip.route.originCity.name} → ${b.trip.route.destinationCity.name}`;
-    const text = `Bonjour ${b.passengerName}, votre billet ${b.agency.name} est confirmé : ${route}, le ${date} à ${time}, siège ${b.seatNumber}. Embarquement : ${b.trip.boardingPoint.name}. Réf. ${ref}. Présentez ce message ou le QR de l'application Wakago au contrôleur. Bon voyage !`;
+    const text = `Bonjour ${b.passengerName}, votre billet ${b.agency.name} est confirmé : ${route}, le ${date} à ${time}, siège ${b.seatNumber}. Embarquement : ${b.trip.boardingPoint.name}. Réf. ${ref}. Présentez ce message ou le QR de l'application ReadyGo au contrôleur. Bon voyage !`;
     const channel = (b.ticketChannel === 'WHATSAPP' ? 'WHATSAPP' : 'SMS') as 'SMS' | 'WHATSAPP';
-    // Modèle Meta wakago_billet : {{1}} nom, {{2}} agence, {{3}} trajet, {{4}} date heure, {{5}} siège, {{6}} référence
+    // Modèle Meta readygo_billet : {{1}} nom, {{2}} agence, {{3}} trajet, {{4}} date heure, {{5}} siège, {{6}} référence
     const ok = await this.notify.send(channel, b.passengerPhone, text, { template: 'ticket', params: [b.passengerName, b.agency.name, route, `${date} ${time}`, b.seatNumber, ref] });
     if (!ok && channel === 'WHATSAPP') await this.notify.sendSms(b.passengerPhone, text);
   }

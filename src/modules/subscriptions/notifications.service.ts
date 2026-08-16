@@ -53,7 +53,7 @@ export class NotificationsService {
         const res = await fetch(process.env.SMS_HTTP_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.SMS_HTTP_KEY ?? ''}` },
-          body: JSON.stringify({ to: NotificationsService.intl(phone), from: process.env.SMS_SENDER ?? 'Wakago', message: text }),
+          body: JSON.stringify({ to: NotificationsService.intl(phone), from: process.env.SMS_SENDER ?? 'ReadyGo', message: text }),
         });
         if (!res.ok) this.log.error(`SMS ${phone} : HTTP ${res.status}`);
         return res.ok;

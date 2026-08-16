@@ -46,7 +46,7 @@ export class AuthService {
     await this.redis.set(`otp:tries:${phone}`, '0', 'EX', OTP_TTL_SECONDS);
     await this.redis.set(cooldownKey, '1', 'EX', OTP_REQUEST_COOLDOWN);
 
-    const text = `Wakago : votre code de vérification est ${code}. Valable 5 minutes.`;
+    const text = `ReadyGo : votre code de vérification est ${code}. Valable 5 minutes.`;
     let sent = await this.notify.send(channel, phone, text, { template: 'otp', params: [code] });
     let used: Channel = channel;
     if (!sent && channel === 'WHATSAPP') { sent = await this.notify.sendSms(phone, text); used = 'SMS'; } // repli

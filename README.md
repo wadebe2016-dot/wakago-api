@@ -1,6 +1,6 @@
-# Wakago API (socle v0.1)
+# ReadyGo API (socle v0.1)
 
-API multi-tenant de la plateforme Wakago (Atlastech Solution) —
+API multi-tenant de la plateforme ReadyGo (Atlastech Solution) —
 réservation de billets de bus interurbains avec paiement Mobile Money.
 
 ## Contenu du socle
@@ -77,7 +77,7 @@ webhook paiement, et les routes d'authentification.
 - `/bookings/hold` : voyageur (channel APP) ou compte agence (channel
   COUNTER) ; le travelerId provient du jeton, plus du corps de requête.
 - Comptes de démo (via seed, agencySlug `express-littoral`) : 699000001 (OWNER),
-  699000002 (CASHIER), 699000003 (CONTROLLER) — mot de passe `Wakago2026!`.
+  699000002 (CASHIER), 699000003 (CONTROLLER) — mot de passe `ReadyGo2026!`.
   Le seed réinitialise ce mot de passe à chaque exécution (dev uniquement).
 - IMPORTANT production : définir un JWT_SECRET fort dans .env.
 
@@ -177,5 +177,5 @@ JSON générique : {to, from, message}) et `WA_PROVIDER=meta` (WhatsApp Business
 Cloud API, modèles WA_TEMPLATE_OTP / WA_TEMPLATE_TICKET). Sans clés : mode log.
 Modèle billet (6 variables) : « Bonjour {{1}}, votre billet {{2}} est confirmé :
 {{3}}, le {{4}}, siège {{5}}. Réf. {{6}}. Présentez ce message ou le QR de
-l'application Wakago au contrôleur. Bon voyage ! » — {{2}} = nom de l'agence.
+l'application ReadyGo au contrôleur. Bon voyage ! » — {{2}} = nom de l'agence.
 Migration `20260815130000_ticket_channel`.

@@ -1,5 +1,5 @@
 // =====================================================================
-// Wakago — Schéma de base de données (PostgreSQL)
+// ReadyGo — Schéma de base de données (PostgreSQL)
 // Multi-tenant par agencyId. Anti-double-vente : contrainte unique
 // partielle sur Booking(tripId, seatNumber) pour les statuts actifs
 // (voir migration SQL) + verrou Redis de 10 min pendant le paiement.

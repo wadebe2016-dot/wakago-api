@@ -1,5 +1,5 @@
 /**
- * Wakago — Script de seed (données de démonstration)
+ * ReadyGo — Script de seed (données de démonstration)
  * Usage :  node prisma/seed.js
  *
  * Crée : 1 agence active (Express Littoral), villes, points d'embarquement,
@@ -23,7 +23,7 @@ function seatLayout30() {
 }
 
 async function main() {
-  console.log('— Seed Wakago : démarrage —');
+  console.log('— Seed ReadyGo : démarrage —');
 
   // 1. Agence de démonstration
   const agency = await prisma.agency.upsert({
@@ -41,10 +41,10 @@ async function main() {
   });
   console.log('Agence :', agency.name);
 
-  // 1b. Comptes du personnel d'agence — mot de passe de démo : Wakago2026!
+  // 1b. Comptes du personnel d'agence — mot de passe de démo : ReadyGo2026!
   //     (le seed RÉINITIALISE ce mot de passe à chaque exécution : pratique en dev,
   //      à retirer avant la production)
-  const DEMO_PASSWORD = 'Wakago2026!';
+  const DEMO_PASSWORD = 'ReadyGo2026!';
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
   async function agencyUser(phone, fullName, role) {
     return prisma.agencyUser.upsert({
